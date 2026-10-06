@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+##########################################################################
+# Copyright 2024 by Chris Osborn <fozztexx@fozztexx.com>
+#
+# This file is part of paumaed.
+#
+#  paumaed is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  paumaed is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with paumaed. If not, see <http://www.gnu.org/licenses/>.
+##########################################################################
+#
+# Based on TNFS documentation here:
+# https://github.com/spectrumero/spectranet/blob/master/tnfs/tnfs-protocol.md
+
+import argparse
+from server import TNFSServer
+import os
+
+TNFS_PORT = 16384
+BIND_IP = "10.4.0.1"
+
+def build_argparser():
+  parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument("share", help="directory to share")
+  parser.add_argument("-b", "--bind", help="IP to bind to")
+  parser.add_argument("--readonly", action="store_true", help="Disallow writing")
+  return parser
+
+def main():
+  args = build_argparser().parse_args()
+
+  if not os.path.isdir(args.share):
+    print("Not a directory:", args.share)
+    exit(1)
+
+  bind_ip = args.bind
+  if not bind_ip:
+    bind_ip = BIND_IP
+  server = TNFSServer(os.path.abspath(args.share), TNFS_PORT, bind_ip)
+  server.run()
+
+  return
+
+if __name__ == '__main__':
+  exit(main() or 0)
