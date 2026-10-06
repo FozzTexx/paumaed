@@ -36,15 +36,15 @@ class DirectoryEntry:
 class TNFSSession:
   sessionCounter = 0
 
-  def __init__(self, rootDir, location, user, password):
+  def __init__(self, server, location, user, password):
     self.connID = None
     if user or password:
       # FIXME - validate user/pass
       return
 
     # FIXME - does location exist?
-    self.location = rootDir
-    path = self.sanitizePath(location)
+    self.server = server
+    path = self.server.sanitizePath(location)
     if not os.path.exists(path) or not os.path.isdir(path) \
        or not os.access(path, os.R_OK) or not os.access(path, os.X_OK):
       return
@@ -62,15 +62,8 @@ class TNFSSession:
         return hid
     return None
 
-  def sanitizePath(self, path):
-    if os.path.isabs(path):
-      path = os.path.sep.join(path.split(os.path.sep)[1:])
-    path = os.path.join(self.location, path)
-    path = os.path.normpath(path)
-    return path
-
   def opendir(self, path, dirOptions=None, sortOptions=None, maxRecords=None, wildcard=None):
-    path = self.sanitizePath(path)
+    path = self.server.sanitizePath(path)
     print("OPENDIR", path)
     if not os.path.exists(path):
       return TNFSResult.ENOENT, None, None
@@ -159,7 +152,7 @@ class TNFSSession:
     return self.handles[handleID].index
 
   def stat(self, path):
-    path = self.sanitizePath(path)
+    path = self.server.sanitizePath(path)
     if not os.path.exists(path):
       return TNFSResult.ENOENT, None
 
@@ -179,7 +172,7 @@ class TNFSSession:
     return TNFSResult.SUCCESS, statd
 
   def open(self, path, tnfsFlags, mode):
-    path = self.sanitizePath(path)
+    path = self.server.sanitizePath(path)
     if os.path.isdir(path):
       return TNFSResult.EISDIR, None
 
@@ -266,12 +259,12 @@ class TNFSSession:
     return TNFSResult.SUCCESS, pos
 
   def unlink(self, path):
-    path = self.sanitizePath(path)
+    path = self.server.sanitizePath(path)
     os.remove(path)
     return TNFSResult.SUCCESS
 
   def chmod(self, path, perms):
-    path = self.sanitizePath(path)
+    path = self.server.sanitizePath(path)
     try:
       os.chmod(path, perms)
     except FileNotFoundError:

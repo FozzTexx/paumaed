@@ -17,6 +17,7 @@
 #  along with paumaed. If not, see <http://www.gnu.org/licenses/>.
 ##########################################################################
 
+import os
 from session import TNFSSession
 from datagram import TNFSDatagram, TNFSCommand, TNFSResult
 from hexdump import hexdump
@@ -224,7 +225,7 @@ class TNFSServer:
         break
 
     if not already:
-      session = TNFSSession(self.rootDir, datagram.location, datagram.user, datagram.password)
+      session = TNFSSession(self, datagram.location, datagram.user, datagram.password)
       if session.connID is None:
         reply.result = TNFSResult.EACCESS
       else:
@@ -247,3 +248,10 @@ class TNFSServer:
       # FIXME - unmount
       pass
     return
+
+  def sanitizePath(self, path):
+    if os.path.isabs(path):
+      path = os.path.sep.join(path.split(os.path.sep)[1:])
+    path = os.path.join(self.rootDir, path)
+    path = os.path.normpath(path)
+    return path
