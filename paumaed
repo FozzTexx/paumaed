@@ -33,6 +33,8 @@ def build_argparser():
   parser.add_argument("share", help="directory to share")
   parser.add_argument("-b", "--bind", help="IP to bind to")
   parser.add_argument("--readonly", action="store_true", help="Disallow writing")
+  parser.add_argument("--writedir", action="append", metavar="DIR",
+                      help="Allow writes to this directory (may be repeated)")
   return parser
 
 def main():
@@ -45,7 +47,9 @@ def main():
   bind_ip = args.bind
   if not bind_ip:
     bind_ip = BIND_IP
-  server = TNFSServer(os.path.abspath(args.share), TNFS_PORT, bind_ip)
+  writeDirs = [os.path.realpath(d) for d in (args.writedir or [])]
+  server = TNFSServer(os.path.abspath(args.share), TNFS_PORT, bind_ip,
+                      readonly=args.readonly, writeDirs=writeDirs)
   server.run()
 
   return

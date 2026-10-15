@@ -87,6 +87,38 @@ class TNFSResult(Enum):
   EOF   	= 0x21
   INVALID	= 0xFF
 
+  @classmethod
+  def fromErrno(cls, errnum):
+    _map = {
+      errnum.EPERM:        cls.EPERM,
+      errnum.ENOENT:       cls.ENOENT,
+      errnum.EIO:          cls.EIO,
+      errnum.ENXIO:        cls.ENXIO,
+      errnum.E2BIG:        cls.E2BIG,
+      errnum.EBADF:        cls.EBADFD,
+      errnum.EAGAIN:       cls.EAGAIN,
+      errnum.ENOMEM:       cls.ENOMEM,
+      errnum.EACCES:       cls.EACCESS,
+      errnum.EBUSY:        cls.EBUSY,
+      errnum.EEXIST:       cls.EEXIST,
+      errnum.ENOTDIR:      cls.ENOTDIR,
+      errnum.EISDIR:       cls.EISDIR,
+      errnum.EINVAL:       cls.EINVAL,
+      errnum.ENFILE:       cls.ENFILE,
+      errnum.EMFILE:       cls.EMFILE,
+      errnum.EFBIG:        cls.EFBIG,
+      errnum.ENOSPC:       cls.ENOSPC,
+      errnum.ESPIPE:       cls.ESPIPE,
+      errnum.EROFS:        cls.EROFS,
+      errnum.ENAMETOOLONG: cls.ENAMETOOLONG,
+      errnum.ENOSYS:       cls.ENOSYS,
+      errnum.ENOTEMPTY:    cls.ENOTEMPTY,
+      errnum.ELOOP:        cls.ELOOP,
+      errnum.ENOBUFS:      cls.ENOBUFS,
+      errnum.ESTALE:       cls.ESTALE,
+    }
+    return _map.get(errnum, cls.EIO)
+
 COMMAND_FORMAT = {
   TNFSCommand.MOUNT: {
     'input': ("version:H", "location:C", "user:C", "password:C"),

@@ -62,7 +62,7 @@ class DirectoryHandle:
       self.contents = glob.glob("*", root_dir=self.path)
     else:
       self.contents = []
-      for dirpath, dirnames, filenames in os.walk(self.path):
+      for dirpath, dirnames, filenames in os.walk(self.path, followlinks=True):
         for filename in filenames:
           # Join the directory path with the filename to get the full path
           full_path = os.path.join(dirpath, filename)

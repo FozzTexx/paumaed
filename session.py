@@ -235,19 +235,25 @@ class TNFSSession:
 
   def write(self, handleID, length, data):
     if length != len(data):
-      TNFSResult.EINVAL, None
+      return TNFSResult.EINVAL, 0
     if handleID not in self.handles:
-      return TNFSResult.EBADFD, None
+      return TNFSResult.EBADFD, 0
     handle = self.handles[handleID]
     if not isinstance(handle, FileHandle):
-      return TNFSResult.EBADFD, None
-    pos = handle.lseek(os.SEEK_CUR, 0)
-    wrote = handle.write(data)
-    track = (pos // 256) // 16
-    sector = (pos // 256) % 16
-    print("SESSION WRITE", pos, f"track: {track}  sector: {sector}")
-    hexdump(data)
-    return TNFSResult.SUCCESS, wrote
+      return TNFSResult.EBADFD, 0
+    try:
+      pos = handle.lseek(os.SEEK_CUR, 0)
+      wrote = handle.write(data)
+      track = (pos // 256) // 16
+      sector = (pos // 256) % 16
+      print("SESSION WRITE", pos, f"track: {track}  sector: {sector}")
+      hexdump(data)
+      result = TNFSResult.SUCCESS
+    except OSError as e:
+      print("WRITE ERROR", e)
+      wrote = 0
+      result = TNFSResult.fromErrno(e.errno)
+    return result, wrote
 
   def lseek(self, handleID, base, offset):
     if handleID not in self.handles:
@@ -258,11 +264,6 @@ class TNFSSession:
     pos = handle.lseek(base, offset)
     return TNFSResult.SUCCESS, pos
 
-  def unlink(self, path):
-    path = self.server.sanitizePath(path)
-    os.remove(path)
-    return TNFSResult.SUCCESS
-
   def chmod(self, path, perms):
     path = self.server.sanitizePath(path)
     try:
@@ -272,6 +273,30 @@ class TNFSSession:
     except PermissionError:
       return TNFSResult.EACCESS, None
     return TNFSResult.SUCCESS
+
+  def mkdir(self, path):
+    path = self.server.sanitizePath(path)
+    try:
+      os.mkdir(path)
+      result = TNFSResult.SUCCESS
+    except FileExistsError:
+      result = TNFSResult.EEXIST
+    except FileNotFoundError:
+      result = TNFSResult.ENOENT
+    except PermissionError:
+      result = TNFSResult.EACCESS
+    return result
+
+  def unlink(self, path):
+    path = self.server.sanitizePath(path)
+    try:
+      os.remove(path)
+      result = TNFSResult.SUCCESS
+    except FileNotFoundError:
+      result = TNFSResult.ENOENT
+    except PermissionError:
+      result = TNFSResult.EACCESS
+    return result
 
   def cleanup(self):
     for handle in self.handles.values():

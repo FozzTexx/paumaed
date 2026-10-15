@@ -25,13 +25,18 @@ import socket
 import select
 from datetime import datetime
 from termcolor import colored
+from handle import TNFSOpenFlags
 
 TNFS_VERSION = 0x0102
 
 class TNFSServer:
-  def __init__(self, rootDir, port, interface, readonly=False):
+  def __init__(self, rootDir, port, interface, readonly=False, writeDirs=None):
     self.rootDir = rootDir
-    self.readonly = readonly
+    self._readonly = readonly
+    if not self._readonly:
+      self.writeDirs = [rootDir, ]
+    else:
+      self.writeDirs = writeDirs or []
 
     self.sockets = []
     self.socketUDP = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -81,6 +86,10 @@ class TNFSServer:
 
         self.handleCommand(sock, datagram)
     return
+
+  def isWritable(self, path):
+    path = self.sanitizePath(path)
+    return any(path == d or path.startswith(d + os.sep) for d in self.writeDirs)
 
   def handleCommand(self, sock, datagram):
     if datagram.command is None:
@@ -140,7 +149,7 @@ class TNFSServer:
             setattr(reply, p, data[p])
 
       elif datagram.command == TNFSCommand.OPEN:
-        if self.readonly \
+        if not self.isWritable(datagram.path) \
            and (datagram.flags & TNFSOpenFlags.O_WRONLY.value
                 or (datagram.flags & TNFSOpenFlags.O_RDWR.value) == TNFSOpenFlags.O_RDWR.value
                 or datagram.flags & TNFSOpenFlags.O_APPEND.value
@@ -161,26 +170,30 @@ class TNFSServer:
           reply.length = len(reply.data)
 
       elif datagram.command == TNFSCommand.WRITE:
-        if self.readonly:
-          reply.result = TNFSResult.EACCESS
-          reply.length = 0
-        else:
-          reply.result, reply.length = session.write(datagram.handle, datagram.length,
-                                                     datagram.data)
+        reply.result, reply.length = session.write(datagram.handle, datagram.length,
+                                                   datagram.data)
 
       elif datagram.command == TNFSCommand.LSEEK:
         reply.result, reply.position = session.lseek(datagram.handle, datagram.base,
                                                      datagram.offset)
 
       elif datagram.command == TNFSCommand.MKDIR:
-        print("MKDIR not implemented")
-        reply.result = TNFSResult.ENOSYS
+        if not self.isWritable(datagram.path):
+          reply.result = TNFSResult.EACCESS
+        else:
+          reply.result = session.mkdir(datagram.path)
 
       elif datagram.command == TNFSCommand.UNLINK:
-        reply.result = session.unlink(datagram.path)
+        if not self.isWritable(datagram.path):
+          reply.result = TNFSResult.EACCESS
+        else:
+          reply.result = session.unlink(datagram.path)
 
       elif datagram.command == TNFSCommand.CHMOD:
-        reply.result = session.chmod(datagram.path, datagram.perms)
+        if not self.isWritable(datagram.path):
+          reply.result = TNFSResult.EACCESS
+        else:
+          reply.result = session.chmod(datagram.path, datagram.perms)
 
       else:
         raise NotImplementedError(datagram.command)
